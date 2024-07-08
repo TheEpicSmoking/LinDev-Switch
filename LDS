@@ -1,0 +1,169 @@
+#!/bin/bash
+
+# Set directory and loading screen
+cd "$(dirname "$0")"
+
+# Function to read from config.ini
+read_config() {
+    local section=""
+    while IFS='=' read -r key value; do
+        if [[ $key =~ ^\[.*\]$ ]]; then
+            section=$key
+        else
+            case "$section" in
+                "[settings]")
+                    case "$key" in
+                        "adaptive_height") adaptive_height="$value" ;;
+                        "frame") frame="$value" ;;
+                        "colors") colors="$value" ;;
+                        "columns") columns="$value" ;;
+                        "lines") lines="$value" ;;
+                    esac
+                    ;;
+                "[devices]")
+                    device_names+=("$key")
+                    device_ids+=$(xinput list --id-only "${value//\"/}")
+                    ;;
+            esac
+        fi
+    done < config.ini
+}
+
+# Variables
+device_names=()
+device_ids=()
+adaptive_height=false
+frame=false
+colors=false
+columns=45
+lines=7
+
+# Read the config.ini
+read_config
+
+# Adjust window dimensions
+max_name_length=$((columns - 15))
+if [[ $adaptive_height == true ]]; then
+    lines=$(( ${#device_names[@]} + 2 ))
+    [[ $frame == true ]] && lines=$((lines + 2))
+fi
+(( lines <= 4 )) && lines=5
+(( columns <= 15 )) && columns=16
+
+# ANSI Escape Sequences for colors
+ESC=$(echo -e "\033")
+if [[ $colors == true ]]; then
+    GREEN="${ESC}[32m"
+    RESET="${ESC}[0m"
+    RED="${ESC}[31m"
+    YELLOW="${ESC}[33m"
+else
+    GREEN=""
+    RESET=""
+    RED=""
+    YELLOW=""
+fi
+
+# Function to display status
+StatusViewer() {
+    clear
+    [[ $frame == true ]] && titleline
+    for i in "${!device_names[@]}"; do
+        local name="${device_names[$i]}"
+        [[ ${#name} -gt $max_name_length ]] && name="${name:0:max_name_length}"
+        local device_id=$(xinput list --id-only "${device_ids[$i]}")
+        local enabled=$(xinput list-props "$device_id" | grep "Device Enabled" | grep -o "[01]$")
+        if [[ $enabled == 1 ]]; then
+            echo "$((i + 1)). $name: ${GREEN}Enabled${RESET}"
+        else
+            echo "$((i + 1)). $name: ${RED}Disabled${RESET}"
+        fi
+    done
+    [[ $frame == true ]] && bottomline
+}
+
+# Function to display the frame
+titleline() {
+    local line=""
+    local TitleSpacer=$((columns - 15))
+    local mod=$((columns % 2))
+    local hcolumns=$((TitleSpacer / 2))
+    local TitleText=" LinDev Switch "
+    (( mod != 0 )) && TitleText="- LinDev Switch "
+    for (( i = 0; i < TitleSpacer; i++ )); do
+        if (( i == hcolumns )); then
+            line+="$TitleText"
+        else
+            line+="-"
+        fi
+    done
+    echo "$line"
+}
+
+bottomline() {
+    local line=""
+    for (( i = 0; i < columns; i++ )); do
+        line+="-"
+    done
+    echo "$line"
+}
+
+# Function to enable all devices
+enableAllDevices() {
+    for device_name in "${device_ids[@]}"; do
+        local device_id=$(xinput list --id-only "$device_name")
+        xinput enable "$device_id"
+    done
+}
+
+# Function to disable all devices
+disableAllDevices() {
+    for device_name in "${device_ids[@]}"; do
+        local device_id=$(xinput list --id-only "$device_name")
+        xinput disable "$device_id"
+    done
+}
+
+# Function to display help
+helper() {
+    clear
+    echo -e "[0-9]* ${YELLOW}|${RESET} Toggle Device."
+    echo -e "e      ${YELLOW}|${RESET} Enable all Devices."
+    echo -e "d      ${YELLOW}|${RESET} Disable all Devices."
+    echo -e "r      ${YELLOW}|${RESET} Refresh."
+    echo -e "q      ${YELLOW}|${RESET} Quit."
+    echo -e "\nPress a button to return... "
+    read -r
+}
+
+# Main menu loop
+while true; do
+    StatusViewer
+    echo -n ">  "
+    read -n 1 choice
+
+    if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#device_names[@]} )); then
+        device_id=$(xinput list --id-only "${device_ids[$((choice-1))]}")
+        enabled=$(xinput list-props "$device_id" | grep "Device Enabled" | grep -o "[01]$")
+        if [[ $enabled == 1 ]]; then
+            xinput disable "$device_id"
+        else
+            xinput enable "$device_id"
+        fi
+    elif [[ $choice == "e" ]]; then
+        enableAllDevices
+    elif [[ $choice == "d" ]]; then
+        disableAllDevices
+    elif [[ $choice == "h" ]]; then
+        helper
+    elif [[ $choice == "r" ]]; then
+        exec "$0"
+    elif [[ $choice == "q" ]]; then
+        exit 0
+    else
+        clear
+        StatusViewer
+        echo -e "${RED}Invalid Choice.${RESET} Type '${YELLOW}h${RESET}' for help."
+        sleep 2
+    fi
+done
