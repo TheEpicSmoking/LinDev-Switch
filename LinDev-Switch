@@ -105,7 +105,12 @@ initial_display() {
         titleline
     fi
     display_page
-    tput cup $(($offset+${#device_names[@]}+1)) 0
+    local device_offset=$((${#device_names[@]}+1))
+
+    if [[ "$device_offset" -gt "$items_per_page" ]]; then
+        device_offset=$items_per_page+3
+    fi 
+    tput cup $(($offset+$device_offset)) 0
     if [[ $frame == true ]]; then
         bottomline
     fi
@@ -146,7 +151,7 @@ display_page() {
             local selection=" "
         fi
         if [[ $i -eq $end_index ]] && [[ $current_page -eq $total_pages ]] && [[ $total_pages > 1 ]]; then
-            local repeat=$((items_per_page - display_number))
+            local repeat=$((items_per_page - display_number - 3))
 
         fi
         if [[ $status == "Enabled" ]]; then
@@ -165,6 +170,7 @@ display_page() {
         if [[ $repeat != 0 ]] && [[ $frame == true ]]; then
             tput cup $(($offset+$items_per_page+3)) 0
             bottomline
+            echo -e "\n[←/→ Browse pages][↑/↓ Select Device][w Toggle][h Help]"
         fi
     fi
 }
@@ -433,6 +439,7 @@ handle_sigwinch() {
 
 handle_exit() {
     tput cnorm
+    clear
 }
 
 # Main menu loop
@@ -523,6 +530,6 @@ while true; do
             fi
         fi
     else
-        echo -e "${RED}Invalid Choice.${RESET} Type '${YELLOW}h${RESET}' for help.                     "
+        echo -e "${RED}Invalid Choice.${RESET} Type '${YELLOW}h${RESET}' for help.                       "
     fi
 done

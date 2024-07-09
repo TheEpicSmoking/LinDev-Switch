@@ -48,11 +48,11 @@ sudo emerge -av x11-apps/xinput
 Run the script:
 
 ```bash
-./LinDev-Switch.sh
+./LinDev-Switch
 ```
 Ensure the script is executable. If necessary, make it executable with:
 ```bash
-chmod +x LinDev-Switch.sh
+chmod +x LinDev-Switch
 ```
 ### config
 While you can manage devices directly through the script, config.ini allows you to configure display settings like frame and colors.
