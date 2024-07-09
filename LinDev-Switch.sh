@@ -383,7 +383,7 @@ remove_device() {
         echo "Remove a device:"
         for i in "${!device_names[@]}"; do
             if [[ $i -eq $selected_index ]]; then
-                echo " ${YELLOW}${device_names[i]}${RESET}"
+                echo " ${RED}${device_names[i]}${RESET}"
             else
                 echo "  ${device_names[i]}"
             fi
