@@ -523,6 +523,6 @@ while true; do
             fi
         fi
     else
-        echo -e "${RED}Invalid Choice.${RESET} Type '${YELLOW}h${RESET}' for help."
+        echo -e "${RED}Invalid Choice.${RESET} Type '${YELLOW}h${RESET}' for help.                     "
     fi
 done
